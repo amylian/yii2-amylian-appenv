@@ -1,4 +1,4 @@
-# yii2-amylian-env
+# yii2-amylian-appenv
 **Helpers for more convenient Yii2 Application environment initialization**
 
 ---
