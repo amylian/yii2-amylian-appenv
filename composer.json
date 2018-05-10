@@ -1,6 +1,6 @@
 {
   "name": "amylian/yii2-amylian-appenv",
-  "description": "ATTENTION: EXPERIMENTAL! Yii2 Application environment initialization",
+  "description": "ATTENTION EXPERIMENTAL! Helpers for more convenient Yii2 Application environment initialization",
   "type": "yii2-extension",
   "license": "BSD-3-Clause",
   "authors": [{
