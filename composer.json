@@ -10,6 +10,8 @@
       "role": "Developer"
     }    
   ],
+  "minimum-stability": "dev",
+  "prefer-stable": true,
   "require": {
     "yiisoft/yii2": "^2.0.13@stable"
   },
