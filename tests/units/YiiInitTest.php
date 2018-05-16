@@ -56,11 +56,11 @@ class YiiInitTest extends \PHPUnit\Framework\TestCase
     
     public function testPrepareWithCustomYiiCore()
     {
-        $this->assertClassNotExists(\Yii::class, 'Yii class exists before initialization - not good');
+        $this->assertClassNotExists(\Yii::class, 'Yii class exists before initialization - not good', false);
         $configuration = \amylian\yii\appenv\YiiInit::prepare(['./configuration/config-basic.php'], 
                 ['basePath' => __DIR__ . '/..',
                  'yiiCorePhp' => './classes/CustomYiiCore.php']);
-        $this->assertClassExists(\Yii::class);
+        $this->assertClassExists(\Yii::class, '' , false);
         $this->assertEquals('yes', \Yii::$classMarker);
     }
 
