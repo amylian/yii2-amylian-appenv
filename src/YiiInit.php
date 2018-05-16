@@ -240,7 +240,7 @@ class YiiInit
         if ($result === false) {
             switch ($handleMissingConnfgFile) {
                 case self::CONFIG_FILE_MISSING_AUTOCREATE:
-                    $wrappedComment = '/**' . str_replace("\n", '\n * ', $configFileComment) . "\n */";
+                    $wrappedComment = '/**' . str_replace("\n", "\n * ", $configFileComment) . "\n */\n\n";
                     try {
 
                         $fh = @fopen($fileName, 'xt');

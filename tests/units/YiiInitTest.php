@@ -127,12 +127,14 @@ class YiiInitTest extends \PHPUnit\Framework\TestCase
         $options       = ['basePath'                => __DIR__ . '/..',
             'handleMissingConfigFile' => \amylian\yii\appenv\YiiInit::CONFIG_FILE_MISSING_USE_DEFAULT,
             'aliases'                 => [
-                '@runtime' => './runtime'
+                '@runtime'   => './runtime',
+                '@cfg'       => './configuration',
+                '@cfg-local' => './runtime'
         ]];
         $configuration = \amylian\yii\appenv\YiiInit::prepare(
-                        ['./configuration/config-basic.php',
-                    './configuration/config-extended.php',
-                    '@runtime/config-missing.php' => [
+                        ['̍@cfg/config-basic.php',
+                    '@cfg/config-extended.php',
+                    '@cfg-local/config-missingl.php' => [
                         'id' => 'config-missing'
                     ]], $options);
         $this->assertArrayHasKey('id', $configuration);
@@ -148,12 +150,17 @@ class YiiInitTest extends \PHPUnit\Framework\TestCase
         ];
         $options        = [
             'basePath'                => __DIR__ . '/..',
-            'handleMissingConfigFile' => \amylian\yii\appenv\YiiInit::CONFIG_FILE_MISSING_AUTOCREATE];
+            'handleMissingConfigFile' => \amylian\yii\appenv\YiiInit::CONFIG_FILE_MISSING_AUTOCREATE,
+            'aliases'                 => [
+                '@runtime'   => './runtime',
+                '@cfg'       => './configuration',
+                '@cfg-local' => './runtime'
+        ]];
         $configuration  = \amylian\yii\appenv\YiiInit::prepare(
                         [
-                    './configuration/config-basic.php',
-                    './configuration/config-extended.php',
-                    './runtime/config-missing.php' => $missingDefault], $options);
+                    '@cfg/config-basic.php',
+                    '@cfg/config-extended.php',
+                    '@cfg-local/config-missing.php' => $missingDefault], $options);
         $this->assertArrayHasKey('id', $configuration);
         $this->assertEquals($configuration['id'], 'config-missing');
         $this->assertFileExists(\amylian\yii\appenv\YiiInit::makeFullPath('./runtime/config-missing.php', $options));
@@ -175,6 +182,24 @@ class YiiInitTest extends \PHPUnit\Framework\TestCase
     {
         $app = \amylian\yii\appenv\YiiInit::prepareApp(['./configuration/config-basic.php'], ['basePath' => __DIR__ . '/..']);
         $this->assertInstanceOf(\yii\base\Application::class, $app);
+        $this->assertInstanceOf(php_sapi_name() == 'cli' ? \yii\console\Application::class : \yii\web\Application::class, $app);
+    }
+
+    public function testWithoutConfigFile()
+    {
+        $app = \amylian\yii\appenv\YiiInit::prepareApp(
+                        [// Begin of array of configurations
+                    [// Begin of a one configuration as array
+                        'id'         => 'directconfig',
+                        'components' => [
+                        // ...
+                        ]
+                    ] // End of one configuration as array
+                        ],
+                        [// Begin of init-options
+                    'basePath' => __DIR__ . '/..'
+                        ] // End of init-options
+        );
         $this->assertInstanceOf(php_sapi_name() == 'cli' ? \yii\console\Application::class : \yii\web\Application::class, $app);
     }
 
