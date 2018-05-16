@@ -54,6 +54,13 @@ class YiiInitTest extends \PHPUnit\Framework\TestCase
         }
     }
     
+    public function testMakeFullPathWithValidAlias()
+    {
+        $options=['basePath' => __DIR__.'/..', 'aliases' => ['@foo' => './runtime/foo']];
+        $this->assertSame(__DIR__.'/.././runtime/foo', \amylian\yii\appenv\YiiInit::makeFullPath('@foo', $options));
+        $this->assertSame(__DIR__.'/.././runtime/foo/bar.txt', \amylian\yii\appenv\YiiInit::makeFullPath('@foo/bar.txt', $options));
+    }
+    
     public function testPrepareWithCustomYiiCore()
     {
         $this->assertClassNotExists(\Yii::class, 'Yii class exists before initialization - not good', false);
@@ -101,6 +108,13 @@ class YiiInitTest extends \PHPUnit\Framework\TestCase
 
     protected function deleteConfigurationMissing()
     {
+        $options = [
+            'basePath' => __DIR__ . '/..',
+            'aliases' => [
+                '@runtime' => './runtime'
+            ]
+        ];
+        \yii\helpers\FileHelper::createDirectory(\amylian\yii\appenv\YiiInit::makeFullPath('@runtime', $options));
         @unlink(\amylian\yii\appenv\YiiInit::makeFullPath('./runtime/config-missing.php', ['basePath' => __DIR__ . '/..']));
     }
 
@@ -108,16 +122,19 @@ class YiiInitTest extends \PHPUnit\Framework\TestCase
     {
         $this->deleteConfigurationMissing();
         $options       = ['basePath'                => __DIR__ . '/..',
-            'handleMissingConfigFile' => \amylian\yii\appenv\YiiInit::CONFIG_FILE_MISSING_USE_DEFAULT];
+            'handleMissingConfigFile' => \amylian\yii\appenv\YiiInit::CONFIG_FILE_MISSING_USE_DEFAULT,
+            'aliases' => [
+                '@runtime' => './runtime'
+            ]];
         $configuration = \amylian\yii\appenv\YiiInit::prepare(
                         ['./configuration/config-basic.php',
                     './configuration/config-extended.php',
-                    './runtime/config-missing.php' => [
+                    '@runtime/config-missing.php' => [
                         'id' => 'config-missing'
                     ]], $options);
         $this->assertArrayHasKey('id', $configuration);
         $this->assertEquals($configuration['id'], 'config-missing');
-        $this->assertFileNotExists(\amylian\yii\appenv\YiiInit::makeFullPath('./runtime/config-missing.php', $options));
+        $this->assertFileNotExists(\amylian\yii\appenv\YiiInit::makeFullPath('@runtime/config-missing.php', $options));
     }
 
     public function testPrepareWithConfigFileAutoCreate()

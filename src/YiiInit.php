@@ -96,51 +96,6 @@ class YiiInit
         return \yii\helpers\ArrayHelper::merge(...$a);
     }
 
-    /**
-     * Returns the complete path
-     * 
-     * if $path is a relative path, a combination of $basePath and $path is returned. Otherwise $path is returned
-     * unchanged.
-     * 
-     * *NOTE:* Relative paths *must* begin with a ".", e.g. `'./vendor/foo/bar'`, or `'../foo/bar'`
-     * 
-     * @param string $path Path to resolve
-     * @param string $basePath Base path to use
-     * @return string resolved path
-     */
-    public static function makeFullPath($path, $options)
-    {
-        switch (substr($path, 0, 1)) {
-            case '.':
-                return $options['basePath'] . '/' . $path;
-            case '@':
-                if (class_exists(\Yii::class, false)) {
-                    return \Yii::getAlias($path);
-                } else {
-                    $dirSepPos = strpos($path, '/');
-                    if (!$dirSepPos) {
-                        $dirSepPos = strpos($path, '\\');
-                    }
-                    $alias = $dirSepPos ? substr($path, 0, $dirSepPos - 1) : $path;
-                    switch ($alias) {
-                        case '@app':
-                            $aliasPath = $options['basePath'];
-                            break;
-                        case '@vendor':
-                            $aliasPath = static::makeFullPath($options['vendorPath'], $options);
-                            break;
-                        case '@yii':
-                            $aliasPath = static::makeFullPath($options['yiiFrameworkPath'], $options);
-                            break;
-                        default: $aliasPath = $options['aliases'][$alias];
-                    }
-                    return substr_replace($path, $aliasPath, 0, $dirSepPos - 1);
-                }
-            default:
-                return $path;
-        }
-    }
-
     protected static function prepareDefaultOptions(&$options, $requiredOptions = ['basePath'])
     {
         //
@@ -184,15 +139,74 @@ class YiiInit
             'yiiConstants',
             'aliases'
         ]);
-        
+
         if ($unkownOptions) {
             throw new \InvalidArgumentException('Invalid $options-argument item(s): ' . implode(', ', $unkownOptions));
         }
-        
+
+        //
+        // Set prepared flag in array. This is done before resolving the aliases
+        // because this function is also called in makeFullPath and we need to signal
+        // that this is not necessary
+        //
         $options['__prepared'] = true;
+
+
+        //
+        // Resolve aliases
+        //
         
         foreach ($options['aliases'] as $an => $av) {
             $options['aliases'][$an] = static::makeFullPath($av, $options);
+        }
+    }
+
+    /**
+     * Returns the complete path
+     * 
+     * if $path is a relative path, a combination of $basePath and $path is returned. Otherwise $path is returned
+     * unchanged.
+     * 
+     * *NOTE:* Relative paths *must* begin with a ".", e.g. `'./vendor/foo/bar'`, or `'../foo/bar'`
+     * 
+     * @param string $path Path to resolve
+     * @param string $basePath Base path to use
+     * @return string resolved path
+     */
+    public static function makeFullPath($path, $options)
+    {
+        static::prepareDefaultOptions($options);
+        switch (substr($path, 0, 1)) {
+            case '.':
+                return $options['basePath'] . '/' . $path;
+            case '@':
+                if (class_exists(\Yii::class, false)) {
+                    $aliasPath = \Yii::getAlias($path, false);
+                }
+                $dirSepPos = strpos($path, '/');
+                if (!$dirSepPos) {
+                    $dirSepPos = strpos($path, '\\');
+                }
+                $alias = $dirSepPos ? substr($path, 0, $dirSepPos) : $path;
+                switch ($alias) {
+                    case '@app':
+                        $aliasPath = $options['basePath'];
+                        break;
+                    case '@vendor':
+                        $aliasPath = static::makeFullPath($options['vendorPath'], $options);
+                        break;
+                    case '@yii':
+                        $aliasPath = static::makeFullPath($options['yiiFrameworkPath'], $options);
+                        break;
+                    default:
+                        $aliasPath = (isset($options['aliases'][$alias])) ? $options['aliases'][$alias] : false;
+                }
+                if ($aliasPath)
+                    return $dirSepPos ? substr_replace($path, $aliasPath, 0, $dirSepPos) : $aliasPath;
+                else
+                    throw new ConfigException('Unknown alias '.$alias);
+            default:
+                return $path;
         }
     }
 
