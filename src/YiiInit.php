@@ -141,38 +141,40 @@ class YiiInit
         }
     }
 
-    protected static function prepareDefaultOptions(&$options, $requiredOptions = ['basePath']): void
+    protected static function prepareDefaultOptions(&$options, $requiredOptions = ['basePath'])
     {
         //
         // Check if already prepared
         //
         if (isset($options['__prepared']))
             return;
-        
+
         //
         // Prepare and check options array
         //
         $options = static::mergeArrays(
-                [
-            'vendorPath'               => './vendor',
-            'yiiFrameworkPath'         => '@vendor/yiisoft/yii',
-            'yiiCorePhp'               => '@yii/Yii.php',
-            'handleMissingConfigFile'  => self::CONFIG_FILE_MISSING_AUTOCREATE,
-            'applicationClass'         => (php_sapi_name() == 'cli') ? \yii\console\Application::class : \yii\web\Application::class,
-            'yiiConstants'                   => [
-            ]
-                ], $options
+                        [
+                    'vendorPath'              => './vendor',
+                    'yiiFrameworkPath'        => '@vendor/yiisoft/yii',
+                    'yiiCorePhp'              => '@yii/Yii.php',
+                    'handleMissingConfigFile' => self::CONFIG_FILE_MISSING_AUTOCREATE,
+                    'applicationClass'        => (php_sapi_name() == 'cli') ? \yii\console\Application::class : \yii\web\Application::class,
+                    'yiiConstants'            => [],
+                    'aliases'                 => []
+                        ], $options
         );
-        
-        $givenOptionKeys= array_keys($options);
-        
+
+        $givenOptionKeys = array_keys($options);
+
         $missingOptions = array_diff($requiredOptions, $givenOptionKeys);
 
         if ($missingOptions) {
-            throw new \InvalidArgumentException('The following item(s) are required options, but missing: '.implode(', ', $missingOptions));
+            throw new \InvalidArgumentException('The following item(s) are required options, but missing: ' . implode(', ',
+                                                                                                                      $missingOptions));
         }
 
-        $unkownOptions = array_diff($givenOptionKeys, [
+        $unkownOptions = array_diff($givenOptionKeys,
+                                    [
             'basePath',
             'vendorPath',
             'yiiFrameworkPath',
@@ -182,10 +184,16 @@ class YiiInit
             'yiiConstants',
             'aliases'
         ]);
+        
         if ($unkownOptions) {
-            throw new \InvalidArgumentException('Invalid $options-argument item(s): '.implode(', ', $unkownOptions));
+            throw new \InvalidArgumentException('Invalid $options-argument item(s): ' . implode(', ', $unkownOptions));
         }
         
+        $options['__prepared'] = true;
+        
+        foreach ($options['aliases'] as $an => $av) {
+            $options['aliases'][$an] = static::makeFullPath($av, $options);
+        }
     }
 
     /**
@@ -238,7 +246,7 @@ class YiiInit
         }
         return $result;
     }
-    
+
     /**
      * Sets the Yii defines from the options array 
      *      
@@ -253,13 +261,13 @@ class YiiInit
     protected static function setConstants($options)
     {
         $defs = isset($options['yiiConstants']) ? $options['yiiConstants'] : [];
-        
+
         $yiiEnvSym = isset($defs['YII_ENV']) ? $defs['YII_ENV'] : (defined('YII_ENV') ? YII_ENV : null);
-        
+
         if (($yiiEnvSym === 'dev') || ($yiiEnvSym === 'test')) {
-                isset($defs['YII_DEBUG']) || $defs['YII_DEBUG'] = true;
+            isset($defs['YII_DEBUG']) || $defs['YII_DEBUG'] = true;
         }
-        
+
         foreach ($defs as $k => $v) {
             (defined($k)) || define($k, $v);
         }
@@ -279,12 +287,14 @@ class YiiInit
         }
 
         static::prepareDefaultOptions($options);
-        
+
         static::setConstants($options);
 
         if (!class_exists(\Yii::class, false)) {
             require_once static::makeFullPath($options['yiiCorePhp'], $options);
-            \Yii::$aliases = array_merge(\Yii::$aliases, $options['aliases']);
+            foreach ($options['aliases'] as $an => $av) {
+                \Yii::$aliases = array_merge(\Yii::$aliases, $options['aliases']);
+            }
         }
 
         foreach ($configs as $i => $v) {
@@ -301,7 +311,7 @@ class YiiInit
         else
             return reset($parts);
     }
-    
+
     /**
      * Prepares the environment, reads the configuration and creates the Application Object
      * 
@@ -315,9 +325,9 @@ class YiiInit
      */
     public static function prepareApp(array $options)
     {
-        
+
         static::prepareDefaultOptions($options);
-        
+
         $configs = static::prepare($options);
         return new $options['applicationClass']($configs);
     }

@@ -126,7 +126,6 @@ class YiiInitTest extends \PHPUnit\Framework\TestCase
         $missingDefault = [
             'id' => 'config-missing'
         ];
-        $this->expectException(\amylian\yii\appenv\ConfigFileException::class);
         $options        = [
             'basePath'                => __DIR__ . '/..',
             'handleMissingConfigFile' => \amylian\yii\appenv\YiiInit::CONFIG_FILE_MISSING_AUTOCREATE];
