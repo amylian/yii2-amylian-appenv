@@ -143,6 +143,14 @@ class YiiInit
         if ($unkownOptions) {
             throw new \InvalidArgumentException('Invalid $options-argument item(s): ' . implode(', ', $unkownOptions));
         }
+        
+        //
+        // Resolve realpath for basePath
+        //
+        
+        if (isset($options['basePath'])) {
+            $options['basePath'] = realpath($options['basePath']);
+        }
 
         //
         // Set prepared flag in array. This is done before resolving the aliases
@@ -310,7 +318,10 @@ class YiiInit
                 \Yii::$aliases = array_merge(\Yii::$aliases, $options['aliases']);
             }
         }
-
+        
+        $parts = [[
+            'basePath' => $options['basePath'],
+            ]];
         foreach ($configs as $i => $v) {
             $cfn = is_string($v) ? $v : (is_string($i) ? $i : null);
             $cfa = is_array($v) ? $v : [];
@@ -330,19 +341,19 @@ class YiiInit
      * Prepares the environment, reads the configuration and creates the Application Object
      * 
      * Basically this function calls  [[prepare()]] with the given optios and creates 
-     * the application object specied in the `'applicationClass'` item. If the application class is
+     * the application object specified in the `'applicationClass'` options-item. If the application class is
      * not specified, [[\yii\console\Application]] is used if php is used from cli, 
      * otherwise the [[\yii\web\Application]] class is used.
      * 
-     * @param array &$options
+     * @param array $options
      * @return \yii\base\Application
      */
-    public static function prepareApp(array $options)
+    public static function prepareApp(array $configs, array $options)
     {
 
         static::prepareDefaultOptions($options);
 
-        $configs = static::prepare($options);
+        $configs = static::prepare($configs, $options);
         return new $options['applicationClass']($configs);
     }
 

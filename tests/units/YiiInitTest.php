@@ -41,6 +41,7 @@ namespace amylian\yii\appenv\tests\units;
  */
 class YiiInitTest extends \PHPUnit\Framework\TestCase
 {
+
     use \amylian\phpunit\traits\AssertClassExistsTrait;
 
     protected function setUp()
@@ -53,21 +54,23 @@ class YiiInitTest extends \PHPUnit\Framework\TestCase
             \amylian\yii\appenv\YiiInit::destroyYiiApplication();
         }
     }
-    
+
     public function testMakeFullPathWithValidAlias()
     {
-        $options=['basePath' => __DIR__.'/..', 'aliases' => ['@foo' => './runtime/foo']];
-        $this->assertSame(__DIR__.'/.././runtime/foo', \amylian\yii\appenv\YiiInit::makeFullPath('@foo', $options));
-        $this->assertSame(__DIR__.'/.././runtime/foo/bar.txt', \amylian\yii\appenv\YiiInit::makeFullPath('@foo/bar.txt', $options));
+        $options = ['basePath' => __DIR__ . '/..', 'aliases' => ['@cfg' => './configuration']];
+        $this->assertSame(realpath(__DIR__ . '/.././configuration'),
+                                   realpath(\amylian\yii\appenv\YiiInit::makeFullPath('@cfg', $options)));
+        $this->assertSame(realpath(__DIR__ . '/../configuration/config-basic.php'),
+                                   realpath(\amylian\yii\appenv\YiiInit::makeFullPath('@cfg/config-basic.php', $options)));
     }
-    
+
     public function testPrepareWithCustomYiiCore()
     {
         $this->assertClassNotExists(\Yii::class, 'Yii class exists before initialization - not good', false);
-        $configuration = \amylian\yii\appenv\YiiInit::prepare(['./configuration/config-basic.php'], 
-                ['basePath' => __DIR__ . '/..',
-                 'yiiCorePhp' => './classes/CustomYiiCore.php']);
-        $this->assertClassExists(\Yii::class, '' , false);
+        $configuration = \amylian\yii\appenv\YiiInit::prepare(['./configuration/config-basic.php'],
+                                                              ['basePath'   => __DIR__ . '/..',
+                    'yiiCorePhp' => './classes/CustomYiiCore.php']);
+        $this->assertClassExists(\Yii::class, '', false);
         $this->assertEquals('yes', \Yii::$classMarker);
     }
 
@@ -110,7 +113,7 @@ class YiiInitTest extends \PHPUnit\Framework\TestCase
     {
         $options = [
             'basePath' => __DIR__ . '/..',
-            'aliases' => [
+            'aliases'  => [
                 '@runtime' => './runtime'
             ]
         ];
@@ -123,9 +126,9 @@ class YiiInitTest extends \PHPUnit\Framework\TestCase
         $this->deleteConfigurationMissing();
         $options       = ['basePath'                => __DIR__ . '/..',
             'handleMissingConfigFile' => \amylian\yii\appenv\YiiInit::CONFIG_FILE_MISSING_USE_DEFAULT,
-            'aliases' => [
+            'aliases'                 => [
                 '@runtime' => './runtime'
-            ]];
+        ]];
         $configuration = \amylian\yii\appenv\YiiInit::prepare(
                         ['./configuration/config-basic.php',
                     './configuration/config-extended.php',
@@ -160,11 +163,30 @@ class YiiInitTest extends \PHPUnit\Framework\TestCase
 
     public function testDefineYiiConstants()
     {
-        \amylian\yii\appenv\YiiInit::prepare(['./configuration/config-basic.php'], ['basePath'     => __DIR__ . '/..',
+        \amylian\yii\appenv\YiiInit::prepare(['./configuration/config-basic.php'],
+                                             ['basePath'     => __DIR__ . '/..',
             'yiiConstants' => [
                 'XYZ_CONST' => '4321'
         ]]);
         $this->assertEquals(XYZ_CONST, 4321);
+    }
+
+    public function testPrepareAppDefault()
+    {
+        $app = \amylian\yii\appenv\YiiInit::prepareApp(['./configuration/config-basic.php'], ['basePath' => __DIR__ . '/..']);
+        $this->assertInstanceOf(\yii\base\Application::class, $app);
+        $this->assertInstanceOf(php_sapi_name() == 'cli' ? \yii\console\Application::class : \yii\web\Application::class, $app);
+    }
+
+    public function testBasicExample1()
+    {
+        $app = \amylian\yii\appenv\YiiInit::prepareApp(['./configuration/config-basic.php'],
+                                                       [
+                    'basePath'     => __DIR__ . '/..',
+                    'yiiConstants' => ['YII_ENV' => 'dev']
+        ]);
+        $this->assertInstanceOf(\yii\base\Application::class, $app);
+        $this->assertInstanceOf(php_sapi_name() == 'cli' ? \yii\console\Application::class : \yii\web\Application::class, $app);
     }
 
 }
