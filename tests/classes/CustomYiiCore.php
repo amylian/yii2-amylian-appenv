@@ -32,8 +32,6 @@
  * 
  */
 
-namespace amylian\yii\appenv\tests\classes;
-
 /**
  * Description of CustomYiiCore
  *
