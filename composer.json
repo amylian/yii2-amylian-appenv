@@ -10,6 +10,12 @@
       "role": "Developer"
     }    
   ],
+  "repositories": [
+    {
+      "type": "composer",
+      "url": "https://asset-packagist.org"
+    }
+  ],
   "minimum-stability": "dev",
   "prefer-stable": true,
   "require": {
