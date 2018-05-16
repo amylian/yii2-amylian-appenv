@@ -189,4 +189,13 @@ class YiiInitTest extends \PHPUnit\Framework\TestCase
         $this->assertInstanceOf(php_sapi_name() == 'cli' ? \yii\console\Application::class : \yii\web\Application::class, $app);
     }
 
+    public function testSqlLiteOutsideExample()
+    {
+        \amylian\yii\appenv\YiiInit::prepareApp(['./configuration/sqlite-app-config.php'],
+                                                [
+            'basePath' => __DIR__ . '/..'
+        ]);
+        $this->assertInstanceOf(\yii\db\Connection::class, \Yii::$app->db);
+    }
+
 }
