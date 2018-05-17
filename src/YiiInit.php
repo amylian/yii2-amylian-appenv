@@ -110,12 +110,14 @@ class YiiInit
         $options = static::mergeArrays(
                         [
                     'vendorPath'              => './vendor',
-                    'yiiFrameworkPath'        => '@vendor/yiisoft/yii',
+                    'yiiPath'                 => '@vendor/yiisoft/yii',
                     'yiiCorePhp'              => '@yii/Yii.php',
                     'handleMissingConfigFile' => self::CONFIG_FILE_MISSING_AUTOCREATE,
                     'applicationClass'        => (php_sapi_name() == 'cli') ? \yii\console\Application::class : \yii\web\Application::class,
                     'yiiConstants'            => [],
-                    'aliases'                 => []
+                    'require'                 => [],
+                    'aliases'                 => [],
+                    'extras'                  => [],
                         ], $options
         );
 
@@ -132,12 +134,14 @@ class YiiInit
                                     [
             'basePath',
             'vendorPath',
-            'yiiFrameworkPath',
+            'yiiPath',
             'yiiCorePhp',
             'handleMissingConfigFile',
             'applicationClass',
             'yiiConstants',
-            'aliases'
+            'require',
+            'aliases',
+            'extras'
         ]);
 
         if ($unkownOptions) {
@@ -161,8 +165,11 @@ class YiiInit
 
 
         //
-        // Resolve aliases
+        // Resolve aliases 
         //
+        
+        $options['vendorPath'] = static::makeFullPath($options['vendorPath'], $options);
+        $options['yiiPath'] = static::makeFullPath($options['yiiPath'], $options);
         
         foreach ($options['aliases'] as $an => $av) {
             $options['aliases'][$an] = static::makeFullPath($av, $options);
@@ -204,7 +211,7 @@ class YiiInit
                         $aliasPath = static::makeFullPath($options['vendorPath'], $options);
                         break;
                     case '@yii':
-                        $aliasPath = static::makeFullPath($options['yiiFrameworkPath'], $options);
+                        $aliasPath = static::makeFullPath($options['yiiPath'], $options);
                         break;
                     default:
                         $aliasPath = (isset($options['aliases'][$alias])) ? $options['aliases'][$alias] : false;
@@ -298,9 +305,14 @@ class YiiInit
     /**
      * Prepares the Yii application environment
      * 
+     * This method reads the configuration and loads all necessary yii files.
+     * 
+     * Basically it does the same as [[prepareApp()]], but does not create the Application instance.
+     * 
      * @param array[]|string[] $configs
-     * @param array $options
-     * @return type
+     * @param array $options Options
+     * @return array Merged configuration array
+     * @see 
      */
     public static function prepare(array $configs, array $options = [])
     {
@@ -311,6 +323,10 @@ class YiiInit
         static::prepareDefaultOptions($options);
 
         static::setConstants($options);
+        
+        foreach ($options['require'] as $fn) {
+            require_once static::makeFullPath($fn, $options);
+        }
 
         if (!class_exists(\Yii::class, false)) {
             require_once static::makeFullPath($options['yiiCorePhp'], $options);
@@ -340,12 +356,106 @@ class YiiInit
     /**
      * Prepares the environment, reads the configuration and creates the Application Object
      * 
-     * Basically this function calls  [[prepare()]] with the given optios and creates 
-     * the application object specified in the `'applicationClass'` options-item. If the application class is
-     * not specified, [[\yii\console\Application]] is used if php is used from cli, 
-     * otherwise the [[\yii\web\Application]] class is used.
+     * The **parameter `$configs`** can take a list of configuration files and/or configuration arrays. 
+     * The configurations can be specified as filename in the value,
+     * in the key part together with an array specifying the defaults, or as array in the 
+     * value part. All configuration items are finally merged together.
      * 
-     * @param array $options
+     * **Example:**
+     * 
+     * ```php
+     * [
+     *   //
+     *   // File path/to/config1.php relative to 'basePath' (see options). This file must
+     *   // exist. An exception is thrown if the file does not exist.
+     *   //
+     *   './path/to/config1.php',   
+     * 
+     *   //
+     *   // File path/to/config2.php relative to 'basePath', but with defaults. 
+     *   // Depending on the setting 'handleMissingConfig' in the $options parameter, 
+     *   // The default values are used and no exception is thrown. This is useful 
+     *   // for optional configuration files. 
+     *   //
+     *   './path/to/config2.php => [ 
+     *                  ['components' => [
+     *                      'db' => [
+     *                           'class' => 'yii\db\Connection',
+     *                           'dsn' => 'sqlite:@runtime/sqlite-db.sql',
+     *                      ]
+     *                  ]
+     *                  ]
+     *   ],
+     *   //
+     *   // Configuration array. This item does not refer to a configuraiton file,
+     *   // but contains the configuration itself:
+     *   //                                 
+     *   [ 
+     *                  ['components' => [
+     *                      'db' => [
+     *                           'class' => 'yii\db\Connection',
+     *                           'dsn' => 'sqlite:@runtime/sqlite-db.sql',
+     *                      ]
+     *                  ]
+     *                  ]
+     *   ]
+     * ]
+     * ```
+     * 
+     * **$options** can take an associative array with additional values necessary for initialization:
+     * 
+     * <dl>
+     *  <dt>baseParam</dt>
+     *  <dd>(String, **Required**): The base path for the application. If this method is called from the index.php 
+     *  of the application, it's usually enough to set this item to `__DIR__`
+     *  </dd>
+     * 
+     *  <dt>vendorPath</dt>
+     *  <dd>(String, Default: `'./vendor') Path to the vendor directory. The value can be used by alias @vendor</dd>
+     * 
+     *  <dt>aliases</dt>
+     *  <dd>(Associative Array, Default: []) Array of additinal aliases. Contrary to the aliases declared in the config-files,
+     *  these aliases can also be used during the initialization. </dd>
+     * 
+     *  <dt>yiiCorePhp</dt>
+     *  <dd>(String, Default: `'@yii/Yii.php'`) Path to file declaring the core \Yii class. *Note*: if class
+     *  \Yii already exists, the file is not included</dd>
+     * 
+     *  <dt>handleMissingConfigFile</dt>
+     *  <dd>(String, Default: `CONFIG_FILE_MISSING_AUTOCREATE`)
+     *      - [[CONFIG_FILE_MISSING_USE_DEFAULT]]: Just use the defaults, but do not create the missing config file
+     *      - [[CONFIG_FILE_MISSING_AUTOCREATE]]: Create the missing config file and use the specified defaults
+     *      - [[CONFIG_FILE_MISSING_ERROR]]: Throw exception if the configuration does not exist
+     *  </dd>
+     * 
+     *  <dt>applicationClass</dt>
+     *  <dd>(String, Default: `'\yii\web\Application`' or `'\yii\console\Application`'). Class to be used for the
+     *  application object. If this item is not specified, the standard Application class is used depending
+     *  on if the script is called from the commandline or by a webserver.</dd>
+     * 
+     *  <dt>yiiConstants</<dt>
+     *  <dd>(Associative array, Default: []) Associative array of constants to be declared _before_ the
+     *  configuration files are loaded. This means, that they are available in the config-scripts. 
+     *  Generally this is useful to declare yii constants like `YII_ENV` or `YII_DEBUG`, but it can
+     *  also be used for custom constants. The key part of the item specifies the name of the constant, the value part the value.
+     *  **Note:** If the constant is already decalred, it will be left untouched.</dd>
+     * 
+     *  <dt>yiiConstants</<dt>
+     *  <dd>(Associative array, Default: []) Array of php files to be included automatically. require_once is
+     *  called for each file _before_ the configuration files are loaded.</dd>
+     * 
+     *  <dt>extras</<dt>
+     *  <dd>(Associative array, Default: []): Associative array of user data.</dd>
+     * 
+     * </dl>   
+     * 
+     * **Note:** If a path to a directory or file is specified, it needs to follow the following conventions:
+     * If the path starts with ".", (e.g. `./path/to/file.php`) it's treated as relative path to basePath.
+     * If it starts with "@", the string up to the next "/" is taken as alias.
+     * Otherwise the path is treated as absolute path. 
+     * 
+     * @param array $configs Array of configuration files or configuration arrays
+     * @param array $options Options
      * @return \yii\base\Application
      */
     public static function prepareApp(array $configs, array $options)
